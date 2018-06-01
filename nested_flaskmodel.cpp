@@ -59,6 +59,11 @@
 #define max_timesteps             1*pow(10,4)  // max number of generations per experiment
 #define init_period               500          // initialisation period (timesteps)
 
+   // DATA FILE NAMES
+#define macro_filename(file_num)           "main_flask_macro_data_"+to_string(file_num)+".txt"
+#define nutrient_filename(file_num)        "main_flask_nutrient_data_"+to_string(file_num)+".txt"
+#define mini_filename(flask_num, filenum)  "mini_flask_"+to_string(flask_num)+"_run_"+to_string(file_num)+".txt"
+
 
 using namespace std;
 
@@ -533,16 +538,13 @@ int main(int argc, char **argv) {
    initialise_flasks(main_flask, flask_list);
 
    // FILE SET UP
-   ofstream macro_data ("main_flask_macro_data_"+to_string(file_num)+".txt");
-   ofstream nutrient_data ("main_flask_nutrient_data_"+to_string(file_num)+".txt");
+   ofstream macro_data (macro_filename(file_num));
+   ofstream nutrient_data (nutrient_filename(file_num));
    for (int f = 0; f < num_flasks; f++){
-	ostringstream filename;
-	filename << "mini_flask_"+to_string(f)+"_run_"+to_string(file_num)+".txt";
-	flask_list[f].file = filename.str();
+	flask_list[f].file = mini_filename(f, filenum);
 	ofstream temp_file (flask_list[f].file);
 	temp_file.close();
-   }
-    
+   }    
 
    /****************************************************************************************
 					INITIALISE ENVIRONMENT 
