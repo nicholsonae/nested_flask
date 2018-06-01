@@ -291,6 +291,7 @@ int initialise_flasks (large_flask &main_flask, vector <flask> &flask_list) {
 	vector < double > nutrient_init (num_nutrients, 0.0);	
 	new_flask.environment = nutrient_init; // start all flasks empty
 	new_flask.temperature = 0.0; 	 // each flask starts at 0.0
+	flask_list.push_back(new_flask);
 	// filenames are initialised in the main code
    }
    return 0;
@@ -484,7 +485,6 @@ int reproduction_event(vector<microbe> &species, default_random_engine &generato
    }
    return 0;
 }
-
 
 
 /****************************************************************************************
