@@ -576,12 +576,10 @@ int main(int argc, char **argv) {
 	for (int f = 0; f < num_flasks; f++) {
 	   int local_pop = 0;
 	   for (int s = 0; s < flask_list[f].species.size(); s++) { local_pop += flask_list[f].species[s].population; }
-	   if (local_pop > 0) {
-		ofstream temp_file;
-		temp_file.open(flask_list[f].file, ofstream::app);
-		temp_file << number_gens << " " << flask_list[f].species.size() << " " << local_pop << " " << flask_list[f].temperature << endl;
-		temp_file.close();
-	   } 
+	   ofstream temp_file;
+	   temp_file.open(flask_list[f].file, ofstream::app);
+	   temp_file << number_gens << " " << flask_list[f].species.size() << " " << local_pop << " " << flask_list[f].temperature << endl;
+	   temp_file.close();
 	}
 
 	/************************************************************************************
