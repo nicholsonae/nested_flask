@@ -16,36 +16,48 @@
 *******************************************/
 
    // MICROBE PARAMETERS
-#define initial_population 100         // seed population size
-#define genome_length 8                // length of genome bitstring
-#define reproduction_thresh 120        // biomass threashold to reproduce
-#define starve_thresh 50               // if a microbe's biomass drops below this, it dies
-#define initial_biomass 80             // starting biomass for every microbe
-#define max_consumption 10             // the maximum rate at which micrcomes can comsume
-#define nutrient_conversion_eff 0.6 // efficiency of microbe conversion
-#define maintainence_cost 1            // how much biomass it costs per timestep to live
-#define p_mut 0.01                  // probability per gene of mutation in reproduction event
-#define p_kill 0.002                //probability of random death per timestep (not starvation)
-#define prefered_abiotic 150.0      // ideal temperature for microbes (universal)
-#define abiotic_scaling 0.0         // temperature sensitivity of microbes (universal)
+#define initial_population        100   // seed population size
+#define genome_length             8     // length of genome bitstring
+#define reproduction_thresh       120   // biomass threashold to reproduce
+#define starve_thresh             50    // if a microbe's biomass drops below this, it dies
+#define initial_biomass           80    // starting biomass for every microbe
+#define max_consumption           10    // the maximum rate at which micrcomes can comsume
+#define nutrient_conversion_eff   0.6   // efficiency of microbe conversion
+#define maintainence_cost         1     // how much biomass it costs per timestep to live
+#define p_mut                     0.01  // probability per gene of mutation in reproduction event
+#define p_kill                    0.002 // probability of random death per timestep (not starvation)
+#define prefered_abiotic          150.0 // ideal temperature for microbes (universal)
+#define abiotic_scaling           0.0   // temperature sensitivity of microbes (universal)
     
    // FLASK PARAMETERS
-#define num_nutrients 4
-#define num_abiotic 1  // if we change this we need to change other code...
-#define num_flasks 4   // the number of flasks
+#define num_nutrients             4
+#define num_abiotic               1     // if we change this we need to change other code...
+#define num_flasks                4     // the number of mini flasks contained within the large flask
 
    //FLOW PARAMETERS
-#define percentage_outflow 0.2     // to calculate outflow
-#define max_nutrient_inflow 150.0
-#define abiotic_start 100.0
-#define abiotic_end 100.0
-#define abiotic_influx 0.2    // the percentage that temp will change each timestep
-#define mini_flask_inflow 0.2
-#define main_flask_scale 1.0 
+#define percentage_outflow        0.2   // to calculate outflow
+#define max_nutrient_inflow       150.0
+#define abiotic_start             100.0
+#define abiotic_end               100.0
+#define abiotic_influx            0.2   // the percentage of the main flask liquid (by volume) exchanged for fresh inflow each timestep
+#define mini_flask_exchange       0.2   // the percentage of the mini flask liquid (by volume) swapped for main flask liquid each timestep
+#define main_flask_scale          1.0   // defines how large the main flask is in relation to the mini flask sizes
+					// total volume of liquid in large flask = num_flasks*main_flask_scale
+					// (excludes the volume taken up by the mini flasks)
+					// cannot have a value < mini_flask_exchange !!!
+#define large_flask_exchange      mini_flask_exchange/main_flask_scale  // percentage of main flask liquid (by volume) that is  
+									// swapped for mini flask liquid each timestep.
+									// Between the main flask and each mini flask
+									// large_flask_exchange/num_flasks % of the large flask liquid
+									// is exchanged with the mini flask
+									// If main_flask_scale = 1.0
+									// then 20% of mini flask liquid = (20/num_flasks)% of main flask
+									// liquid. If main_flask_scale = 0.5, then 20% of 
+									// mini flask liquid = (40/num_flasks)% of main flask liquid
 
-    //TIME PARAMETERS
-#define max_timesteps 10*pow(10,4)   // max number of generations per experiment
-#define init_period 5000             // initialisation period (timesteps)
+   //TIME PARAMETERS
+#define max_timesteps             1*pow(10,4)  // max number of generations per experiment
+#define init_period               500          // initialisation period (timesteps)
 
 
 using namespace std;
@@ -56,14 +68,14 @@ using namespace std;
 *******************************************/
 
 //********* microbe ****************
-class microbe {  // class for our microbe species
+class microbe {    
     
     public:
-    int genome;
-    int population;
-    int nutrient; // amount of unconverted food 
-    int biomass;
-    int waste;  // amount of un excreted waste
+    int genome;      // decimal representation of binary genome
+    int population;  // population of this species
+    int nutrient;    // amount of unconverted food 
+    int biomass;     // amount of biomass within the species
+    int waste;       // amount of un-excreted waste
     
 };
 
@@ -75,7 +87,7 @@ class flask {
      vector < double > environment; // vector containing nutrient stocks in this flask
      double temperature;            // value of abiotic parameter of each individual flask
      int iteration;		    // number of iterations per timestep for flask (= total population at start of timestep)
-     string file;
+     string file;		    // the data file name for this mini flask
 
 };
 
@@ -259,9 +271,9 @@ vector < double > abiotic_genome_interactions() {
 /**************** initialise flasks ****************************/
 int initialise_flasks (large_flask &main_flask, vector <flask> &flask_list) {
 
-   vector < double > large_nutrient_init (num_nutrients, 0.0);
-   main_flask.temperature = 0.0;
-   main_flask.mini_flasks = num_flasks;
+   vector < double > large_nutrient_init (num_nutrients, 0.0); // initially nutrient empty environment
+   main_flask.temperature = 0.0;                               // initial temperature at 0
+   main_flask.mini_flasks = num_flasks;                        // set number of mini flasks
    main_flask.environment = large_nutrient_init;
    for (int k = 0; k < num_flasks; k++) {  // set up each flask
 	flask new_flask;
@@ -289,9 +301,9 @@ int initialise_flasks (large_flask &main_flask, vector <flask> &flask_list) {
 	}
 	new_flask.species = species_init;
 	vector < double > nutrient_init (num_nutrients, 0.0);	
-	new_flask.environment = nutrient_init; // start all flasks empty
-	new_flask.temperature = 0.0; 	 // each flask starts at 0.0
-	flask_list.push_back(new_flask);
+	new_flask.environment = nutrient_init; // start all flasks empty of nutrients
+	new_flask.temperature = 0.0; 	       // each flask starts at 0.0
+	flask_list.push_back(new_flask);       // append new flask to flask list
 	// filenames are initialised in the main code
    }
    return 0;
@@ -299,32 +311,30 @@ int initialise_flasks (large_flask &main_flask, vector <flask> &flask_list) {
 
 //*************** update all flask environments **********************************//
 int update_all_flasks (large_flask &main_flask, vector < flask > &flask_list, double abiotic_env) {
-   // outflow and inflow
+   // outflow and inflow to large flasks
    for (int j = 0; j < num_nutrients; j++){ main_flask.environment[j] = main_flask.environment[j]*(1.0-abiotic_influx);}     
    for (int j = 0; j < num_nutrients; j++){ main_flask.environment[j] += max_nutrient_inflow; } 
 
-   abiotic_env -= (abiotic_start - abiotic_end)/max_timesteps;
+   abiotic_env -= (abiotic_start - abiotic_end)/max_timesteps; // update the temperature of the inflow medium
 	    
-   main_flask.temperature = main_flask.temperature*(1.0-abiotic_influx) + abiotic_env*abiotic_influx; // dilute with fresh inflow
+   main_flask.temperature = main_flask.temperature*(1.0-abiotic_influx) + abiotic_env*abiotic_influx; // dilute main flask with fresh inflow
 
-   double current_temperature_main = main_flask.temperature;
-   double temperature_changes = 0.0;
+   double current_temperature_main = main_flask.temperature;   // record the temperature of the main flask 
+   double temperature_changes = 0.0;  // to record temperature change of main flask due to medium exchange with mini flasks
    vector < double > current_nutrients_main = main_flask.environment;
-   vector < double > current_nutrients_mini;
    double current_temperature_mini;
 
    for (int j = 0; j < num_flasks; j++) {
 	current_temperature_mini = flask_list[j].temperature;
-	flask_list[j].temperature = flask_list[j].temperature*(1.0-mini_flask_inflow) + current_temperature_main*mini_flask_inflow;
-	temperature_changes += (current_temperature_mini*mini_flask_inflow + current_temperature_main*(1.0-mini_flask_inflow))/(num_flasks);
-
+	flask_list[j].temperature = flask_list[j].temperature*(1.0-mini_flask_exchange) + current_temperature_main*mini_flask_exchange;
+	temperature_changes += current_temperature_main*(1.0-large_flask_exchange) + current_temperature_mini*large_flask_exchange;
 	for (int k = 0; k < num_nutrients; k++) {
-	   double nutrient_k_transfer = -1.0*mini_flask_inflow*flask_list[j].environment[k] + mini_flask_inflow*current_nutrients_main[k]/(1.0*num_flasks);
+	   double nutrient_k_transfer = -1.0*mini_flask_exchange*flask_list[j].environment[k] + large_flask_exchange*current_nutrients_main[k]/(1.0*num_flasks);  // net movement of nutrients from mini flask to main flask
 	   flask_list[j].environment[k] += nutrient_k_transfer;
 	   main_flask.environment[k] -= nutrient_k_transfer;
 	}
    } 
-   main_flask.temperature = temperature_changes;
+   main_flask.temperature = temperature_changes/num_flasks;
 
    return 0;
 
