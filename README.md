@@ -3,7 +3,7 @@
 compile with:
 g++ -std=c++0x -O3 -o nested_flaskmodel nested_flaskmodel.cpp
 
-run with:
+run with two arguments:
 ./nested_flaskmodel i j &
 
 where i is a random seed to initialise the microbes 
