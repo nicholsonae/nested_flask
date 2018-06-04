@@ -30,12 +30,11 @@
 #define abiotic_scaling           0.0   // temperature sensitivity of microbes (universal)
     
    // FLASK PARAMETERS
-#define num_nutrients             4     // number of different nutrient types within experiment
-#define num_abiotic               1     // if we change this we need to change other code...
 #define num_flasks                4     // the number of mini flasks contained within the large flask
+#define num_nutrients             4     // number of different nutrient types within experiment
 
    //FLOW PARAMETERS
-#define max_nutrient_inflow       150.0 // number of units of each nutrient type inflowing per timestep to large flask
+#define nutrient_inflow	          150.0 // number of units of each nutrient type inflowing per timestep to large flask
 #define inflow_T_start            100.0 // temperature of inflow medium at start of experiment
 #define inflow_T_end              100.0 // temperature of inflow medium at end of experiment 
 #define abiotic_influx            0.2   // the percentage of the main flask liquid (by volume) exchanged for fresh inflow each timestep
@@ -348,7 +347,7 @@ int initialise_flasks (large_flask &main_flask, vector <flask> &flask_list) {
 int update_all_flasks (large_flask &main_flask, vector < flask > &flask_list, double inflow_T) {
    // outflow and inflow to large flasks
    for (int j = 0; j < num_nutrients; j++){ main_flask.environment[j] = main_flask.environment[j]*(1.0-abiotic_influx);}     
-   for (int j = 0; j < num_nutrients; j++){ main_flask.environment[j] += max_nutrient_inflow; } 
+   for (int j = 0; j < num_nutrients; j++){ main_flask.environment[j] += nutrient_inflow; } 
 
    inflow_T -= (inflow_T_start - inflow_T_end)/max_timesteps;                                        // update the T of inflow medium
 	    
