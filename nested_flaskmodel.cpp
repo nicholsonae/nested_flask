@@ -27,7 +27,7 @@
 #define p_mut                     0.01  // probability per gene of mutation in reproduction event
 #define p_kill                    0.002 // probability of random death per timestep (not starvation)
 #define prefered_abiotic          150.0 // ideal temperature for microbes (universal)
-#define abiotic_scaling           0.0   // temperature sensitivity of microbes (universal)
+#define abiotic_scaling           0.02   // temperature sensitivity of microbes (universal)
     
    // FLASK PARAMETERS
 #define num_flasks                4     // the number of mini flasks contained within the large flask
@@ -86,11 +86,9 @@ class microbe {
 class flask {
 
      public:
-     vector < microbe > species;    // vector containing all species in this flask
-     vector < double > environment; // vector containing nutrient stocks in this flask
-     double temperature;            // value of abiotic parameter of each individual flask
-     int iteration;		    // number of iterations per timestep for flask (= total population at start of timestep)
-     string file;		    // the data file name for this mini flask
+     vector < microbe >  species;     // vector containing all species in this flask
+     vector < double >   environment; // vector containing nutrient stocks in this flask
+     double              temperature; // value of abiotic parameter of each individual flask
 
 };
 
@@ -98,9 +96,9 @@ class flask {
 class large_flask {
 
      public:
-     int mini_flasks;  		     // number of flasks contained within main flask
-     vector < double > environment;  // vector containing nutrient stocks in main flask
-     double temperature;             // value of abiotic parameter of main flask
+     int                mini_flasks;  // number of flasks contained within main flask
+     vector < double >  environment;  // vector containing nutrient stocks in main flask
+     double             temperature;  // value of abiotic parameter of main flask
 
 };
 
@@ -142,11 +140,11 @@ microbe generate_individual(int i, vector<microbe> &species, default_random_engi
    normal_distribution<double> biomass_dist( average_biomass, average_biomass*0.1 ); // distribution of biomass in pop
    int i_biomass = floor(biomass_dist(generator));
    double nutrient_avg = 1.0*species[i].nutrient/species[i].population;
-   normal_distribution<double> nutrient_species_dist( nutrient_avg, nutrient_avg*0.1);
-   int i_nutrient = floor(nutrient_species_dist(generator)); // we'll just round down as can't use half a nutrient
+   normal_distribution<double> nutrient_dist( nutrient_avg, nutrient_avg*0.1);
+   int i_nutrient = floor(nutrient_dist(generator)); // we'll just round down as can't use half a nutrient
    double waste_avg = 1.0*species[i].waste/species[i].population;
-   normal_distribution<double> waste_species_dist( waste_avg, waste_avg*0.1);
-   int i_waste = floor(waste_species_dist(generator)); // we'll just round down as can't use half a nutrient
+   normal_distribution<double> waste_dist( waste_avg, waste_avg*0.1);
+   int i_waste = floor(waste_dist(generator)); // we'll just round down as can't use half a nutrient
 
    if (i_biomass > species[i].biomass)   { i_biomass = species[i].biomass;   }
    if (i_biomass < 0)                    { i_biomass = 0;                    }
@@ -557,10 +555,9 @@ int main(int argc, char **argv) {
    // FILE SET UP
    ofstream macro_data (macro_filename(file_num));
    ofstream nutrient_data (nutrient_filename(file_num));
+   vector < ofstream > mini_flask_data;
    for (int f = 0; f < num_flasks; f++){
-	flask_list[f].file = mini_filename(f, filenum);
-	ofstream temp_file (flask_list[f].file);
-	temp_file.close();
+	mini_flask_data.emplace_back(ofstream{ mini_filename(f, filenum) });
    }    
 
    /****************************************************************************************
@@ -593,10 +590,7 @@ int main(int argc, char **argv) {
 	for (int f = 0; f < num_flasks; f++) {
 	   int local_pop = 0;
 	   for (int s = 0; s < flask_list[f].species.size(); s++) { local_pop += flask_list[f].species[s].population; }
-	   ofstream temp_file;
-	   temp_file.open(flask_list[f].file, ofstream::app);
-	   temp_file << number_gens << " " << flask_list[f].species.size() << " " << local_pop << " " << flask_list[f].temperature << endl;
-	   temp_file.close();
+	   mini_flask_data[f] << number_gens << " " << flask_list[f].species.size() << " " << local_pop << " " << flask_list[f].temperature << endl;
 	}
 
 	/************************************************************************************
@@ -669,6 +663,9 @@ int main(int argc, char **argv) {
     /* CLOSE FILES */
     macro_data.close();
     nutrient_data.close();
+    for (int f = 0; f < num_flasks; f++) {
+	mini_flask_data[f].close();
+    }
 
     return 0;
 }
