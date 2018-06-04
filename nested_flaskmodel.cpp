@@ -30,15 +30,14 @@
 #define abiotic_scaling           0.0   // temperature sensitivity of microbes (universal)
     
    // FLASK PARAMETERS
-#define num_nutrients             4
+#define num_nutrients             4     // number of different nutrient types within experiment
 #define num_abiotic               1     // if we change this we need to change other code...
 #define num_flasks                4     // the number of mini flasks contained within the large flask
 
    //FLOW PARAMETERS
-#define percentage_outflow        0.2   // to calculate outflow
-#define max_nutrient_inflow       150.0
-#define abiotic_start             100.0
-#define abiotic_end               100.0
+#define max_nutrient_inflow       150.0 // number of units of each nutrient type inflowing per timestep to large flask
+#define inflow_T_start            100.0 // temperature of inflow medium at start of experiment
+#define inflow_T_end              100.0 // temperature of inflow medium at end of experiment 
 #define abiotic_influx            0.2   // the percentage of the main flask liquid (by volume) exchanged for fresh inflow each timestep
 #define mini_flask_exchange       0.2   // the percentage of the mini flask liquid (by volume) swapped for main flask liquid each timestep
 #define main_flask_scale          1.0   // defines how large the main flask is in relation to the mini flask sizes
@@ -212,7 +211,7 @@ vector < vector <int> > nutrient_genome_interactions(default_random_engine &gene
 	if (pos == 2) {   // we eat two nutrients
 	   int loc1 = -1;  // find the location of the positive numbers in the vector
 	   int loc2 = -1;
-	   for (int k = 0; k < temp.size(); k++) { if (temp[k] > 0             ) { loc1 = k; } }
+	   for (int k = 0; k < temp.size(); k++) { if (temp[k] > 0)              { loc1 = k; } }
 	   for (int k = 0; k < temp.size(); k++) { if (temp[k] > 0 && k != loc1) { loc2 = k; } }
 	   temp[loc1] = temp[loc1]/GCD(temp[loc1],temp[loc2]);
 	   temp[loc2] = temp[loc2]/GCD(temp[loc1],temp[loc2]);
@@ -222,8 +221,8 @@ vector < vector <int> > nutrient_genome_interactions(default_random_engine &gene
 	   int loc1 = -1;
 	   int loc2 = -1;
 	   int loc3 = -1;
-	   for (int k = 0; k < temp.size(); k++) { if (temp[k] > 0                         ) { loc1 = k; } }
-	   for (int k = 0; k < temp.size(); k++) { if (temp[k] > 0 && k != loc1            ) { loc2 = k; } }
+	   for (int k = 0; k < temp.size(); k++) { if (temp[k] > 0)                          { loc1 = k; } }
+	   for (int k = 0; k < temp.size(); k++) { if (temp[k] > 0 && k != loc1)             { loc2 = k; } }
 	   for (int k = 0; k < temp.size(); k++) { if (temp[k] > 0 && k != loc1 && k!= loc2) { loc3 = k; } }
 	
 	   int gcd_1 = GCD(temp[loc1],temp[loc2]);
@@ -340,23 +339,23 @@ int initialise_flasks (large_flask &main_flask, vector <flask> &flask_list) {
 	new_flask.environment = nutrient_init; // start all flasks empty of nutrients
 	new_flask.temperature = 0.0; 	       // each flask starts at 0.0
 	flask_list.push_back(new_flask);       // append new flask to flask list
-	// filenames are initialised in the main code
+					       // filenames are initialised in the main code
    }
    return 0;
 }
 
 //*************** update all flask environments **********************************//
-int update_all_flasks (large_flask &main_flask, vector < flask > &flask_list, double abiotic_env) {
+int update_all_flasks (large_flask &main_flask, vector < flask > &flask_list, double inflow_T) {
    // outflow and inflow to large flasks
    for (int j = 0; j < num_nutrients; j++){ main_flask.environment[j] = main_flask.environment[j]*(1.0-abiotic_influx);}     
    for (int j = 0; j < num_nutrients; j++){ main_flask.environment[j] += max_nutrient_inflow; } 
 
-   abiotic_env -= (abiotic_start - abiotic_end)/max_timesteps; // update the temperature of the inflow medium
+   inflow_T -= (inflow_T_start - inflow_T_end)/max_timesteps;                                        // update the T of inflow medium
 	    
-   main_flask.temperature = main_flask.temperature*(1.0-abiotic_influx) + abiotic_env*abiotic_influx; // dilute main flask with fresh inflow
+   main_flask.temperature = main_flask.temperature*(1.0-abiotic_influx) + inflow_T*abiotic_influx; // dilute main flask with fresh inflow
 
    double current_temperature_main = main_flask.temperature;   // record the temperature of the main flask 
-   double temperature_changes = 0.0;  // to record temperature change of main flask due to medium exchange with mini flasks
+   double temperature_changes = 0.0;                           // to record T change of main flask due to exchange with mini flasks
    vector < double > current_nutrients_main = main_flask.environment;
    double current_temperature_mini;
 
@@ -379,24 +378,23 @@ int update_all_flasks (large_flask &main_flask, vector < flask > &flask_list, do
 /**************** kill event ****************************/
 int kill_event (vector<microbe> &species, default_random_engine &generator){
 
-   int i = chooseAgent(species); // choses a microbe at random
+   int i = chooseAgent(species); 								  // choses a microbe at random
    if (i > -1) {
-	microbe chosen_microbe = generate_individual(i, species, generator); // generate the chosen microbe
-
-	if (chosen_microbe.biomass <= starve_thresh) { // death event via starvation
+	microbe chosen_microbe = generate_individual(i, species, generator); 			  // generate the chosen microbe
+	if (chosen_microbe.biomass <= starve_thresh) { 						  // death event via starvation
 	   species[i].population--;
-	   species[i].biomass -= chosen_microbe.biomass; // remove biomass of dead microbe 
-	   species[i].nutrient -= chosen_microbe.nutrient; // remove unconverted nutrients 
-	   if (species[i].nutrient < 0) { species[i].nutrient = 0; }
-	   if (species[i].biomass < 1) { species[i].biomass = 0; species[i].population = 0; }
-	   if (species[i].population == 0){ species.erase(species.begin() + i); } // remove from list if extinct
-	} else if (drand48() <= p_kill && species[i].population > 0) {  // death event via p_kill probability
+	   species[i].biomass -= chosen_microbe.biomass; 					  // remove biomass of dead microbe 
+	   species[i].nutrient -= chosen_microbe.nutrient; 					  // remove unconverted nutrients 
+	   if (species[i].nutrient < 0)    { species[i].nutrient = 0;                           }
+	   if (species[i].biomass < 1)     { species[i].biomass = 0; species[i].population = 0; }
+	   if (species[i].population == 0) { species.erase(species.begin() + i);                } // remove from list if extinct
+	} else if (drand48() <= p_kill && species[i].population > 0) {                            // death event via p_kill probability
 	   species[i].population--;
-	   species[i].biomass -= chosen_microbe.biomass; // remove biomass of dead microbe 
-	   species[i].nutrient -= chosen_microbe.nutrient; // remove unconverted nutrients
-	   if (species[i].nutrient < 0) { species[i].nutrient = 0; }
-	   if (species[i].biomass < 1) { species[i].biomass = 0; species[i].population = 0; }
-	   if (species[i].population == 0){ species.erase(species.begin() + i);} // remove from list if extinct
+	   species[i].biomass -= chosen_microbe.biomass; 					  // remove biomass of dead microbe 
+	   species[i].nutrient -= chosen_microbe.nutrient; 					  // remove unconverted nutrients
+	   if (species[i].nutrient < 0)    { species[i].nutrient = 0;                           }
+	   if (species[i].biomass < 1)     { species[i].biomass = 0; species[i].population = 0; }
+	   if (species[i].population == 0) { species.erase(species.begin() + i);                } // remove from list if extinct
 	}
    }
    return 0;
@@ -446,7 +444,7 @@ int biomassCreation_event (vector<microbe> &species, double &temperature, vector
 
    int i = chooseAgent(species);
    if (i > -1){
-	microbe chosen_microbe = generate_individual(i, species, generator); // generate the chosen microbe
+	microbe chosen_microbe = generate_individual(i, species, generator);       // generate the chosen microbe
 	while ( chosen_microbe.nutrient >= 5) {     
 	   species[i].nutrient -= 5;
 	   chosen_microbe.nutrient -= 5;
@@ -464,7 +462,6 @@ int waste_event (vector<microbe> &species, vector<double> &environment, vector<v
    int i = chooseAgent(species);
    if (i > -1){
 	microbe chosen_microbe = generate_individual(i, species, generator); // generate the chosen microbe
-
 	int waste_count = 0;
 	for (int k = 0; k < num_nutrients; k++) { waste_count += metabolism[species[i].genome][k+num_nutrients]; }
 	while (chosen_microbe.waste >= waste_count && chosen_microbe.waste > 0) {
@@ -484,21 +481,20 @@ int reproduction_event(vector<microbe> &species, default_random_engine &generato
    int i = chooseAgent(species);
    if (i > -1){
 	microbe chosen_microbe = generate_individual(i, species, generator); // generate the chosen microbe
-
-	if (chosen_microbe.biomass >= reproduction_thresh) {  // reproduction occurs
+	if (chosen_microbe.biomass >= reproduction_thresh) { 	             // reproduction occurs
  	   bitset<genome_length> mutant_genome(species[i].genome);
-	   int did_we_mutate = 0; // do we mutate?
+	   int did_we_mutate = 0; 					     // do we mutate?
  	   for (int j = 0; j < genome_length; j++){
-		if (drand48() <= p_mut){ // probability of mutation per gene
+		if (drand48() <= p_mut){ 				     // probability of mutation per gene
 		   did_we_mutate = 1;
-		   if (mutant_genome[j] == 1) { mutant_genome[j] = 0; } // flip gene if mutated
+		   if (mutant_genome[j] == 1) { mutant_genome[j] = 0; }      // flip gene if mutated
 		   else { mutant_genome[j] = 1; }
 		}
 	   }
 	   if (did_we_mutate == 1) {
 		int mutant_number = int(mutant_genome.to_ulong());
 		int species_exists = 0;
-		for (int q = 0; q < species.size(); q++){ // check to see if species exists
+		for (int q = 0; q < species.size(); q++){ 			 // check to see if species exists
 		   if (species[q].genome == mutant_number){
 			species[q].population++;
 			species[q].biomass += int(chosen_microbe.biomass / 2.0); // half biomass goes to new mutant
@@ -510,10 +506,10 @@ int reproduction_event(vector<microbe> &species, default_random_engine &generato
 		if (species_exists == 0){ // add species if it doesn't exist
 		   microbe temp_mutant;
 		   temp_mutant.genome = mutant_number;
-		   temp_mutant.nutrient = 0; //  no nutrient count to begin with
+		   temp_mutant.nutrient = 0; 				     // no nutrient count to begin with
 		   temp_mutant.biomass = int(chosen_microbe.biomass / 2.0);  // half biomass goes to new mutant
 		   species[i].biomass -= int(chosen_microbe.biomass / 2.0);
-		   temp_mutant.population = 1; // initial population of 1
+		   temp_mutant.population = 1; 				     // initial population of 1
 		   temp_mutant.waste = 0;
 		   species.push_back(temp_mutant);
 		}
@@ -531,7 +527,7 @@ int reproduction_event(vector<microbe> &species, default_random_engine &generato
 int main(int argc, char **argv) {
 
    // INITIALISE INFLOW TEMPERATURE
-   double abiotic_env = abiotic_start;
+   double inflow_T = inflow_T_start;
 
    // RANDOM NUMBER GENERATORS
    int t = atoi(argv[1]); // seed for randomness
@@ -573,7 +569,7 @@ int main(int argc, char **argv) {
    *****************************************************************************************/
 
     while (init_counter < init_period) {
-	update_all_flasks(main_flask, flask_list, abiotic_env);
+	update_all_flasks(main_flask, flask_list, inflow_T);
 	init_counter++;
     }
 
@@ -592,7 +588,7 @@ int main(int argc, char **argv) {
                                     RECORD DATA
 	********************************************************************************/
 
-	macro_data << number_gens << " " << num_alive_flasks << " " << main_flask.temperature << " " << abiotic_env << endl;
+	macro_data << number_gens << " " << num_alive_flasks << " " << main_flask.temperature << " " << inflow_T << endl;
 	num_alive_flasks = 0;
 
 	for (int f = 0; f < num_flasks; f++) {
@@ -608,7 +604,7 @@ int main(int argc, char **argv) {
 	                          NUTRIENT FLOW
 	**************************************************************************************/
 
-	update_all_flasks(main_flask, flask_list, abiotic_env);
+	update_all_flasks(main_flask, flask_list, inflow_T);
 
 	/********************************************************************************
 				LOOP OVER MINI FLASKS
