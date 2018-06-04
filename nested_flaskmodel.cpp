@@ -34,7 +34,7 @@
 #define num_nutrients             4     // number of different nutrient types within experiment
 
    //FLOW PARAMETERS
-#define nutrient_inflow	          150.0 // number of units of each nutrient type inflowing per timestep to large flask
+#define nutrient_inflow	          300.0 // number of units of each nutrient type inflowing per timestep to large flask per mini flask
 #define inflow_T_start            100.0 // temperature of inflow medium at start of experiment
 #define inflow_T_end              100.0 // temperature of inflow medium at end of experiment 
 #define abiotic_influx            0.2   // the percentage of the main flask liquid (by volume) exchanged for fresh inflow each timestep
@@ -136,13 +136,15 @@ int chooseAgent(vector< microbe > &species) {
 
 microbe generate_individual(int i, vector<microbe> &species, default_random_engine &generator) {
 
-   double average_biomass = species[i].biomass/(1.0*species[i].population);
-   normal_distribution<double> biomass_dist( average_biomass, average_biomass*0.1 ); // distribution of biomass in pop
+   double biomass_avg = species[i].biomass/(1.0*species[i].population);
+   normal_distribution<double> biomass_dist( biomass_avg, biomass_avg*0.1 ); // distribution of biomass in pop
    int i_biomass = floor(biomass_dist(generator));
-   double nutrient_avg = 1.0*species[i].nutrient/species[i].population;
+
+   double nutrient_avg = species[i].nutrient/(1.0*species[i].population);
    normal_distribution<double> nutrient_dist( nutrient_avg, nutrient_avg*0.1);
    int i_nutrient = floor(nutrient_dist(generator)); // we'll just round down as can't use half a nutrient
-   double waste_avg = 1.0*species[i].waste/species[i].population;
+
+   double waste_avg = species[i].waste/(1.0*species[i].population);
    normal_distribution<double> waste_dist( waste_avg, waste_avg*0.1);
    int i_waste = floor(waste_dist(generator)); // we'll just round down as can't use half a nutrient
 
@@ -154,11 +156,11 @@ microbe generate_individual(int i, vector<microbe> &species, default_random_engi
    if (i_waste < 0)                      { i_waste = 0;                      }
 
    microbe chosen_microbe;
-   chosen_microbe.genome = i;
+   chosen_microbe.genome =     i;
    chosen_microbe.population = 1;
-   chosen_microbe.nutrient = i_nutrient;
-   chosen_microbe.biomass = i_biomass;
-   chosen_microbe.waste = i_waste;
+   chosen_microbe.nutrient =   1.0*i_nutrient;
+   chosen_microbe.biomass =    1.0*i_biomass;
+   chosen_microbe.waste =      1.0*i_waste;
 
    return chosen_microbe;
 
@@ -344,8 +346,8 @@ int initialise_flasks (large_flask &main_flask, vector <flask> &flask_list) {
 //*************** update all flask environments **********************************//
 int update_all_flasks (large_flask &main_flask, vector < flask > &flask_list, double inflow_T) {
    // outflow and inflow to large flasks
-   for (int j = 0; j < num_nutrients; j++){ main_flask.environment[j] = main_flask.environment[j]*(1.0-abiotic_influx);}     
-   for (int j = 0; j < num_nutrients; j++){ main_flask.environment[j] += nutrient_inflow; } 
+   for (int j = 0; j < num_nutrients; j++){ main_flask.environment[j]  = main_flask.environment[j]*(1.0-abiotic_influx);}     
+   for (int j = 0; j < num_nutrients; j++){ main_flask.environment[j] += nutrient_inflow*num_flasks;                    } 
 
    inflow_T -= (inflow_T_start - inflow_T_end)/max_timesteps;                                        // update the T of inflow medium
 	    
@@ -357,13 +359,14 @@ int update_all_flasks (large_flask &main_flask, vector < flask > &flask_list, do
    double current_temperature_mini;
 
    for (int j = 0; j < num_flasks; j++) {
-	current_temperature_mini = flask_list[j].temperature;
-	flask_list[j].temperature = flask_list[j].temperature*(1.0-mini_flask_exchange) + current_temperature_main*mini_flask_exchange;
-	temperature_changes += current_temperature_main*(1.0-large_flask_exchange) + current_temperature_mini*large_flask_exchange;
+	current_temperature_mini  = flask_list[j].temperature;
+	flask_list[j].temperature = current_temperature_mini*(1.0-mini_flask_exchange)  + current_temperature_main*mini_flask_exchange;
+	temperature_changes      += current_temperature_main*(1.0-large_flask_exchange) + current_temperature_mini*large_flask_exchange;
 	for (int k = 0; k < num_nutrients; k++) {
-	   double nutrient_k_transfer = -1.0*mini_flask_exchange*flask_list[j].environment[k] + large_flask_exchange*current_nutrients_main[k]/(1.0*num_flasks);  // net movement of nutrients from mini flask to main flask
+	   // net movement of nutrients from miniflask -> main flask
+	   double nutrient_k_transfer = -1.0*mini_flask_exchange*flask_list[j].environment[k] + large_flask_exchange*current_nutrients_main[k]/(1.0*num_flasks);  
 	   flask_list[j].environment[k] += nutrient_k_transfer;
-	   main_flask.environment[k] -= nutrient_k_transfer;
+	   main_flask.environment[k]    -= nutrient_k_transfer;
 	}
    } 
    main_flask.temperature = temperature_changes/num_flasks;
@@ -590,7 +593,11 @@ int main(int argc, char **argv) {
 	for (int f = 0; f < num_flasks; f++) {
 	   int local_pop = 0;
 	   for (int s = 0; s < flask_list[f].species.size(); s++) { local_pop += flask_list[f].species[s].population; }
-	   mini_flask_data[f] << number_gens << " " << flask_list[f].species.size() << " " << local_pop << " " << flask_list[f].temperature << endl;
+	   mini_flask_data[f] << number_gens << " " << flask_list[f].species.size() << " " << local_pop << " " << flask_list[f].temperature; 
+	   for (int n = 0; n < num_nutrients; n++) {
+		mini_flask_data[f] << " " << flask_list[f].environment[n];
+	   }
+	   mini_flask_data[f] << endl;
 	}
 
 	/************************************************************************************
