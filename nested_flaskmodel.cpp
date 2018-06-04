@@ -137,6 +137,37 @@ int chooseAgent(vector< microbe > &species) {
     return -1; // this should never happen   
 }
 
+
+microbe generate_individual(int i, vector<microbe> &species, default_random_engine &generator) {
+
+   double average_biomass = species[i].biomass/(1.0*species[i].population);
+   normal_distribution<double> biomass_dist( average_biomass, average_biomass*0.1 ); // distribution of biomass in pop
+   int i_biomass = floor(biomass_dist(generator));
+   double nutrient_avg = 1.0*species[i].nutrient/species[i].population;
+   normal_distribution<double> nutrient_species_dist( nutrient_avg, nutrient_avg*0.1);
+   int i_nutrient = floor(nutrient_species_dist(generator)); // we'll just round down as can't use half a nutrient
+   double waste_avg = 1.0*species[i].waste/species[i].population;
+   normal_distribution<double> waste_species_dist( waste_avg, waste_avg*0.1);
+   int i_waste = floor(waste_species_dist(generator)); // we'll just round down as can't use half a nutrient
+
+   if (i_biomass > species[i].biomass)   { i_biomass = species[i].biomass;   }
+   if (i_biomass < 0)                    { i_biomass = 0;                    }
+   if (i_nutrient > species[i].nutrient) { i_nutrient = species[i].nutrient; }
+   if (i_nutrient < 0)                   { i_nutrient = 0;                   }
+   if (i_waste > species[i].waste)       { i_waste = species[i].waste;       }
+   if (i_waste < 0)                      { i_waste = 0;                      }
+
+   microbe chosen_microbe;
+   chosen_microbe.genome = i;
+   chosen_microbe.population = 1;
+   chosen_microbe.nutrient = i_nutrient;
+   chosen_microbe.biomass = i_biomass;
+   chosen_microbe.waste = i_waste;
+
+   return chosen_microbe;
+
+}
+
 //********* greater common denomenator ***************
 int GCD(int a, int b) {
     while( 1 ) {
@@ -276,15 +307,15 @@ vector < double > abiotic_genome_interactions() {
 /**************** initialise flasks ****************************/
 int initialise_flasks (large_flask &main_flask, vector <flask> &flask_list) {
 
-   vector < double > large_nutrient_init (num_nutrients, 0.0); // initially nutrient empty environment
-   main_flask.temperature = 0.0;                               // initial temperature at 0
-   main_flask.mini_flasks = num_flasks;                        // set number of mini flasks
+   vector < double > large_nutrient_init (num_nutrients, 0.0);     // initially nutrient empty environment
+   main_flask.temperature = 0.0;                                   // initial temperature at 0
+   main_flask.mini_flasks = num_flasks;                            // set number of mini flasks
    main_flask.environment = large_nutrient_init;
-   for (int k = 0; k < num_flasks; k++) {  // set up each flask
+   for (int k = 0; k < num_flasks; k++) {                          // set up each flask
 	flask new_flask;
 	microbe new_microbe;
-	vector < microbe > species_init; //(1, new_microbe);
-	for (int j = 0; j < initial_population; j++) { // currently set up with diverse population
+	vector < microbe > species_init;
+	for (int j = 0; j < initial_population; j++) {             // currently set up with diverse population
 	   int genome_new = floor(drand48()*pow(2,genome_length)); // randomly generate microbes
 	   int already_exists = 0;
 	   for (int k = 0; k < species_init.size(); k++){
@@ -350,24 +381,19 @@ int kill_event (vector<microbe> &species, default_random_engine &generator){
 
    int i = chooseAgent(species); // choses a microbe at random
    if (i > -1) {
-	double average_biomass = species[i].biomass/(1.0*species[i].population);
-	normal_distribution<double> biomass_dist( average_biomass, average_biomass*0.1 ); // distribution of biomass in pop
-	int i_biomass = floor(biomass_dist(generator));
-	double nutrient_avg = 1.0*species[i].nutrient/species[i].population;
-	normal_distribution<double> nutrient_species_dist( nutrient_avg, nutrient_avg*0.1);
-	int i_nutrient = floor(nutrient_species_dist(generator)); // we'll just round down as can't use half a nutrient
+	microbe chosen_microbe = generate_individual(i, species, generator); // generate the chosen microbe
 
-	if (i_biomass <= starve_thresh) { // death event via starvation
+	if (chosen_microbe.biomass <= starve_thresh) { // death event via starvation
 	   species[i].population--;
-	   species[i].biomass -= i_biomass; // remove biomass of dead microbe 
-	   species[i].nutrient -= i_nutrient; // remove unconverted nutrients 
+	   species[i].biomass -= chosen_microbe.biomass; // remove biomass of dead microbe 
+	   species[i].nutrient -= chosen_microbe.nutrient; // remove unconverted nutrients 
 	   if (species[i].nutrient < 0) { species[i].nutrient = 0; }
 	   if (species[i].biomass < 1) { species[i].biomass = 0; species[i].population = 0; }
 	   if (species[i].population == 0){ species.erase(species.begin() + i); } // remove from list if extinct
 	} else if (drand48() <= p_kill && species[i].population > 0) {  // death event via p_kill probability
 	   species[i].population--;
-	   species[i].biomass -= i_biomass; // remove biomass of dead microbe 
-	   species[i].nutrient -= i_nutrient; // remove unconverted nutrients
+	   species[i].biomass -= chosen_microbe.biomass; // remove biomass of dead microbe 
+	   species[i].nutrient -= chosen_microbe.nutrient; // remove unconverted nutrients
 	   if (species[i].nutrient < 0) { species[i].nutrient = 0; }
 	   if (species[i].biomass < 1) { species[i].biomass = 0; species[i].population = 0; }
 	   if (species[i].population == 0){ species.erase(species.begin() + i);} // remove from list if extinct
@@ -420,12 +446,10 @@ int biomassCreation_event (vector<microbe> &species, double &temperature, vector
 
    int i = chooseAgent(species);
    if (i > -1){
-	double species_nutrient_avg = 1.0*species[i].nutrient/species[i].population;
-	normal_distribution<double> nutrient_species_dist( species_nutrient_avg, species_nutrient_avg*0.1);
-	int nutrient_available = floor(nutrient_species_dist(generator)); // we'll just round down as can't use half a nutrient
-	while ( nutrient_available >= 5) {     
+	microbe chosen_microbe = generate_individual(i, species, generator); // generate the chosen microbe
+	while ( chosen_microbe.nutrient >= 5) {     
 	   species[i].nutrient -= 5;
-	   nutrient_available -= 5;
+	   chosen_microbe.nutrient -= 5;
 	   species[i].biomass += int(5.0*nutrient_conversion_eff);
 	   species[i].waste += int(5*(1.0 - nutrient_conversion_eff));
 	   temperature += 5.0*nutrient_conversion_eff*T_impact[species[i].genome]; // the effect on abiotic environment
@@ -439,17 +463,16 @@ int waste_event (vector<microbe> &species, vector<double> &environment, vector<v
 
    int i = chooseAgent(species);
    if (i > -1){
-	double species_waste_avg = 1.0*species[i].waste/species[i].population;
-	normal_distribution<double> waste_species_dist( species_waste_avg, species_waste_avg*0.1);
-	int waste_available = round(waste_species_dist(generator));
-	if (waste_available > species[i].waste) { waste_available = species[i].waste; } 
+	microbe chosen_microbe = generate_individual(i, species, generator); // generate the chosen microbe
+
 	int waste_count = 0;
 	for (int k = 0; k < num_nutrients; k++) { waste_count += metabolism[species[i].genome][k+num_nutrients]; }
-	while (species[i].waste >= waste_count && species[i].waste > 0) {
+	while (chosen_microbe.waste >= waste_count && chosen_microbe.waste > 0) {
 	   for (int k = 0; k < num_nutrients; k++) {
 		species[i].waste -=  metabolism[species[i].genome][k+num_nutrients];
 		environment[k] +=  metabolism[species[i].genome][k+num_nutrients];
 	   }
+	   chosen_microbe.waste -= waste_count;
 	}
    }
    return 0;
@@ -460,10 +483,9 @@ int reproduction_event(vector<microbe> &species, default_random_engine &generato
 
    int i = chooseAgent(species);
    if (i > -1){
-	double average_biomass = (1.0*species[i].biomass)/species[i].population; // average biomass per indiviual
-	normal_distribution<double> biomass_species_dist( average_biomass, average_biomass*0.1 );
-	int i_biomass = floor(biomass_species_dist(generator));
-	if (i_biomass >= reproduction_thresh) {  // reproduction occurs
+	microbe chosen_microbe = generate_individual(i, species, generator); // generate the chosen microbe
+
+	if (chosen_microbe.biomass >= reproduction_thresh) {  // reproduction occurs
  	   bitset<genome_length> mutant_genome(species[i].genome);
 	   int did_we_mutate = 0; // do we mutate?
  	   for (int j = 0; j < genome_length; j++){
@@ -479,8 +501,8 @@ int reproduction_event(vector<microbe> &species, default_random_engine &generato
 		for (int q = 0; q < species.size(); q++){ // check to see if species exists
 		   if (species[q].genome == mutant_number){
 			species[q].population++;
-			species[q].biomass += int(i_biomass / 2.0); // half biomass goes to new mutant
-			species[i].biomass -= int(i_biomass / 2.0);
+			species[q].biomass += int(chosen_microbe.biomass / 2.0); // half biomass goes to new mutant
+			species[i].biomass -= int(chosen_microbe.biomass / 2.0);
 			species_exists = 1;
 			break;
 		   }
@@ -489,8 +511,8 @@ int reproduction_event(vector<microbe> &species, default_random_engine &generato
 		   microbe temp_mutant;
 		   temp_mutant.genome = mutant_number;
 		   temp_mutant.nutrient = 0; //  no nutrient count to begin with
-		   temp_mutant.biomass = int(i_biomass / 2.0);  // half biomass goes to new mutant
-		   species[i].biomass -= int(i_biomass / 2.0);
+		   temp_mutant.biomass = int(chosen_microbe.biomass / 2.0);  // half biomass goes to new mutant
+		   species[i].biomass -= int(chosen_microbe.biomass / 2.0);
 		   temp_mutant.population = 1; // initial population of 1
 		   temp_mutant.waste = 0;
 		   species.push_back(temp_mutant);
