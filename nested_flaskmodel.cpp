@@ -179,7 +179,7 @@ int GCD(int a, int b) {
 //******** nutrient genome interactions (metabolisms) **************
 vector < vector <int> > nutrient_genome_interactions(default_random_engine &generator){
   
-   vector <int> cons_ex_vector (8, 0);  // consumption excretion vector
+   vector <int> cons_ex_vector (8, 0);           // consumption excretion vector
    vector <int> temp(4, 0);
    vector < vector <int> > all_metabolisms;
     
@@ -188,7 +188,7 @@ vector < vector <int> > nutrient_genome_interactions(default_random_engine &gene
 	int neg = 0;  // number nutrients excreted
 
 	for (int j = 0; j < temp.size(); j++) {
-	   double a = 11*(2.0*drand48() - 1); //random number between (11,-11) actual range with floor / ceil is [10,-10]
+	   double a = 11*(2.0*drand48() - 1);    //random number between (11,-11) actual range with floor / ceil is [10,-10]
 	   double b = 11*(2.0*drand48() - 1);
 	   if (a > 0) { a = floor(a); }
 	   else       { a = ceil(a);  }
@@ -349,12 +349,12 @@ int update_all_flasks (large_flask &main_flask, vector < flask > &flask_list, do
    for (int j = 0; j < num_nutrients; j++){ main_flask.environment[j]  = main_flask.environment[j]*(1.0-abiotic_influx);}     
    for (int j = 0; j < num_nutrients; j++){ main_flask.environment[j] += nutrient_inflow;            		        } 
 
-   inflow_T -= (inflow_T_start - inflow_T_end)/max_timesteps;                                        // update the T of inflow medium
+   inflow_T -= (inflow_T_start - inflow_T_end)/max_timesteps;                                      // update the T of inflow medium
 	    
    main_flask.temperature = main_flask.temperature*(1.0-abiotic_influx) + inflow_T*abiotic_influx; // dilute main flask with fresh inflow
 
-   double current_temperature_main = main_flask.temperature;   // record the temperature of the main flask 
-   double temperature_changes = 0.0;                           // to record T change of main flask due to exchange with mini flasks
+   double current_temperature_main = main_flask.temperature;   					   // record the temperature of the main flask 
+   double temperature_changes = 0.0;                           					   // T change of main flask due to mini flask exchange
    vector < double > current_nutrients_main = main_flask.environment;
    double current_temperature_mini;
 
@@ -530,7 +530,7 @@ int main(int argc, char **argv) {
    double inflow_T = inflow_T_start;
 
    // RANDOM NUMBER GENERATORS
-   int t = atoi(argv[1]); // seed for randomness
+   int t = atoi(argv[1]); 	       // seed for randomness
    srand48 (t);
    mt19937 rng(t);
    default_random_engine generator;    // used for our distributions
@@ -587,9 +587,17 @@ int main(int argc, char **argv) {
                                     RECORD DATA
 	********************************************************************************/
 
+	// record data from main flask
 	macro_data << number_gens << " " << num_alive_flasks << " " << main_flask.temperature << " " << inflow_T << endl;
-	num_alive_flasks = 0;
+	nutrient_data << number_gens;
+	for (int n = 0; n < num_nutrients; n++){
+	   nutrient_data << " " << main_flask.environment[n];
+	}
+	nutrient_data << endl;
+	
+	num_alive_flasks = 0;  // reset counter for number of mini flasks hosting live biospheres for this timestep
 
+	//record data from the mini flasks to individual files
 	for (int f = 0; f < num_flasks; f++) {
 	   int local_pop = 0;
 	   for (int s = 0; s < flask_list[f].species.size(); s++) { local_pop += flask_list[f].species[s].population; }
