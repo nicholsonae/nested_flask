@@ -347,7 +347,7 @@ int initialise_flasks (large_flask &main_flask, vector <flask> &flask_list) {
 int update_all_flasks (large_flask &main_flask, vector < flask > &flask_list, double inflow_T) {
    // outflow and inflow to large flasks
    for (int j = 0; j < num_nutrients; j++){ main_flask.environment[j]  = main_flask.environment[j]*(1.0-abiotic_influx);}     
-   for (int j = 0; j < num_nutrients; j++){ main_flask.environment[j] += nutrient_inflow;                    } 
+   for (int j = 0; j < num_nutrients; j++){ main_flask.environment[j] += nutrient_inflow;            		        } 
 
    inflow_T -= (inflow_T_start - inflow_T_end)/max_timesteps;                                        // update the T of inflow medium
 	    
