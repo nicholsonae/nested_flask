@@ -27,7 +27,7 @@
 #define p_mut                     0.01   // probability per gene of mutation in reproduction event
 #define p_kill                    0.002  // probability of random death per timestep (not starvation)
 #define prefered_abiotic          150.0  // ideal temperature for microbes (universal)
-#define abiotic_scaling           0.02   // temperature sensitivity of microbes (universal)
+#define tau           		  0.02   // temperature sensitivity of microbes (universal)
     
    // FLASK PARAMETERS
 #define num_flasks                4      // the number of mini flasks contained within the large flask
@@ -413,7 +413,7 @@ int metabolism_event(flask &current, vector<vector<int>> metabolism) {
 
    int i = chooseAgent(current.species);
    if( i > -1) {
-	double factor_i = abiotic_scaling*sqrt(pow(current.temperature - prefered_abiotic, 2.0));
+	double factor_i = tau*sqrt(pow(current.temperature - prefered_abiotic, 2.0));
 	double satisfaction = exp (-1.0*pow(factor_i,2.0));
 	int total_count_eat = floor(max_consumption * satisfaction);
 	int minimum_count_eat = 0; // the minumum total number of nutrients microbe can intake
