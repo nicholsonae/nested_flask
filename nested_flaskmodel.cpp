@@ -16,33 +16,33 @@
 *******************************************/
 
    // MICROBE PARAMETERS
-#define initial_population        100   // seed population size
-#define genome_length             8     // length of genome bitstring
-#define reproduction_thresh       120   // biomass threashold to reproduce
-#define starve_thresh             50    // if a microbe's biomass drops below this, it dies
-#define initial_biomass           80    // starting biomass for every microbe
-#define max_consumption           10    // the maximum rate at which micrcomes can comsume
-#define nutrient_conversion_eff   0.6   // efficiency of microbe conversion
-#define maintainence_cost         1     // how much biomass it costs per timestep to live
-#define p_mut                     0.01  // probability per gene of mutation in reproduction event
-#define p_kill                    0.002 // probability of random death per timestep (not starvation)
-#define prefered_abiotic          150.0 // ideal temperature for microbes (universal)
+#define initial_population        100    // seed population size
+#define genome_length             8      // length of genome bitstring
+#define reproduction_thresh       120    // biomass threashold to reproduce
+#define starve_thresh             50     // if a microbe's biomass drops below this, it dies
+#define initial_biomass           80     // starting biomass for every microbe
+#define max_consumption           10     // the maximum rate at which micrcomes can comsume
+#define nutrient_conversion_eff   0.6    // efficiency of microbe conversion
+#define maintainence_cost         1      // how much biomass it costs per timestep to live
+#define p_mut                     0.01   // probability per gene of mutation in reproduction event
+#define p_kill                    0.002  // probability of random death per timestep (not starvation)
+#define prefered_abiotic          150.0  // ideal temperature for microbes (universal)
 #define abiotic_scaling           0.02   // temperature sensitivity of microbes (universal)
     
    // FLASK PARAMETERS
-#define num_flasks                4     // the number of mini flasks contained within the large flask
-#define num_nutrients             4     // number of different nutrient types within experiment
+#define num_flasks                4      // the number of mini flasks contained within the large flask
+#define num_nutrients             4      // number of different nutrient types within experiment
 
    //FLOW PARAMETERS
-#define nutrient_inflow	          300.0 // number of units of each nutrient type inflowing per timestep to large flask per mini flask
-#define inflow_T_start            100.0 // temperature of inflow medium at start of experiment
-#define inflow_T_end              100.0 // temperature of inflow medium at end of experiment 
-#define abiotic_influx            0.2   // the percentage of the main flask liquid (by volume) exchanged for fresh inflow each timestep
-#define mini_flask_exchange       0.2   // the percentage of the mini flask liquid (by volume) swapped for main flask liquid each timestep
-#define main_flask_scale          1.0   // defines how large the main flask is in relation to the mini flask sizes
-					// total volume of liquid in large flask = num_flasks*main_flask_scale
-					// (excludes the volume taken up by the mini flasks)
-					// cannot have a value < mini_flask_exchange !!!
+#define nutrient_inflow	          1200.0 // number of units of each nutrient type inflowing per timestep to large flask
+#define inflow_T_start            100.0  // temperature of inflow medium at start of experiment
+#define inflow_T_end              100.0  // temperature of inflow medium at end of experiment 
+#define abiotic_influx            0.2    // the percentage of the main flask liquid (by volume) exchanged for fresh inflow each timestep
+#define mini_flask_exchange       0.2    // the percentage of the mini flask liquid (by volume) swapped for main flask liquid each timestep
+#define main_flask_scale          1.0    // defines how large the main flask is in relation to the mini flask sizes
+					 // total volume of liquid in large flask = num_flasks*main_flask_scale
+					 // (excludes the volume taken up by the mini flasks)
+					 // cannot have a value < mini_flask_exchange !!!
 #define large_flask_exchange      mini_flask_exchange/main_flask_scale  // percentage of main flask liquid (by volume) that is  
 									// swapped for mini flask liquid each timestep.
 									// Between the main flask and each mini flask
@@ -347,7 +347,7 @@ int initialise_flasks (large_flask &main_flask, vector <flask> &flask_list) {
 int update_all_flasks (large_flask &main_flask, vector < flask > &flask_list, double inflow_T) {
    // outflow and inflow to large flasks
    for (int j = 0; j < num_nutrients; j++){ main_flask.environment[j]  = main_flask.environment[j]*(1.0-abiotic_influx);}     
-   for (int j = 0; j < num_nutrients; j++){ main_flask.environment[j] += nutrient_inflow*num_flasks;                    } 
+   for (int j = 0; j < num_nutrients; j++){ main_flask.environment[j] += nutrient_inflow;                    } 
 
    inflow_T -= (inflow_T_start - inflow_T_end)/max_timesteps;                                        // update the T of inflow medium
 	    
