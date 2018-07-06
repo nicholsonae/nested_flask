@@ -36,7 +36,7 @@
    //FLOW PARAMETERS
 #define nutrient_inflow	          1200.0 // number of units of each nutrient type inflowing per timestep to large flask
 #define inflow_T_start            100.0  // temperature of inflow medium at start of experiment
-#define inflow_T_end              100.0  // temperature of inflow medium at end of experiment 
+#define inflow_T_end              300.0  // temperature of inflow medium at end of experiment 
 #define abiotic_influx            0.2    // the percentage of the main flask liquid (by volume) exchanged for fresh inflow each timestep
 #define mini_flask_exchange       0.2    // the percentage of the mini flask liquid (by volume) swapped for main flask liquid each timestep
 #define main_flask_scale          1.0    // defines how large the main flask is in relation to the mini flask sizes
@@ -188,17 +188,17 @@ vector < vector <int> > nutrient_genome_interactions(default_random_engine &gene
 	int neg = 0;  // number nutrients excreted
 
 	for (int j = 0; j < temp.size(); j++) {
-	   double a = 11*(2.0*drand48() - 1);    //random number between (11,-11) actual range with floor / ceil is [10,-10]
+	   double a = 11*(2.0*drand48() - 1);       //random number between (-11,+11) actual range with floor / ceil is [-10,+10]
 	   double b = 11*(2.0*drand48() - 1);
-	   if (a > 0) { a = floor(a); }
-	   else       { a = ceil(a);  }
-	   if (b > 0) { b = floor(b); }
-	   else       { b = ceil(b);  }
-	   temp[j] = a+b; 
+	   if (a >= 0) { a = floor(a);  }	   // integer values
+	   else        { a = ceil(a);   }      
+	   if (b >= 0) { b = floor(b);  }
+	   else        { b = ceil(b);   }
+	   temp[j] = a+b;                          // sum to get random number between [-10,+10]
 
-	   if      (temp[j] > 0) { pos += 1;    }    
-	   else if (temp[j] < 0) { neg += 1;    } 
-	   else                  { temp[j] = 0; }
+	   if      (temp[j] > 0) { pos += 1;    }  // if positive - species consumes this nutrient   
+	   else if (temp[j] < 0) { neg += 1;    }  // if negative - species excretes this nutrient
+	   else                  { temp[j] = 0; }  // if 0 - species does not interact with this nutrient
 	}
 
 	if ( pos > 2 && neg > 2) { cout << "metabolism setup problem"; }  // bug check
@@ -344,12 +344,12 @@ int initialise_flasks (large_flask &main_flask, vector <flask> &flask_list) {
 }
 
 //*************** update all flask environments **********************************//
-int update_all_flasks (large_flask &main_flask, vector < flask > &flask_list, double inflow_T) {
+int update_all_flasks (large_flask &main_flask, vector < flask > &flask_list, double &inflow_T, double T_switch) {
    // outflow and inflow to large flasks
    for (int j = 0; j < num_nutrients; j++){ main_flask.environment[j]  = main_flask.environment[j]*(1.0-abiotic_influx);}     
    for (int j = 0; j < num_nutrients; j++){ main_flask.environment[j] += nutrient_inflow;            		        } 
 
-   inflow_T -= (inflow_T_start - inflow_T_end)/max_timesteps;                                      // update the T of inflow medium
+   if (T_switch == 1.0) { inflow_T -= (inflow_T_start - inflow_T_end)/(max_timesteps*1.0); }       // update the T of inflow medium
 	    
    main_flask.temperature = main_flask.temperature*(1.0-abiotic_influx) + inflow_T*abiotic_influx; // dilute main flask with fresh inflow
 
@@ -568,7 +568,7 @@ int main(int argc, char **argv) {
    *****************************************************************************************/
 
     while (init_counter < init_period) {
-	update_all_flasks(main_flask, flask_list, inflow_T);
+	update_all_flasks(main_flask, flask_list, inflow_T, 0.0);
 	init_counter++;
     }
 
@@ -612,7 +612,7 @@ int main(int argc, char **argv) {
 	                          NUTRIENT FLOW
 	**************************************************************************************/
 
-	update_all_flasks(main_flask, flask_list, inflow_T);
+	update_all_flasks(main_flask, flask_list, inflow_T, 1.0);
 
 	/********************************************************************************
 				LOOP OVER MINI FLASKS
