@@ -36,7 +36,6 @@
    //FLOW PARAMETERS
 #define nutrient_inflow	          1200.0 // number of units of each nutrient type inflowing per timestep to large flask
 #define inflow_T_start            100.0  // temperature of inflow medium at start of experiment
-#define inflow_T_end              300.0  // temperature of inflow medium at end of experiment 
 #define abiotic_influx            0.2    // the percentage of the main flask liquid (by volume) exchanged for fresh inflow each timestep
 #define mini_flask_exchange       0.2    // the percentage of the mini flask liquid (by volume) swapped for main flask liquid each timestep
 #define main_flask_scale          1.0    // defines how large the main flask is in relation to the mini flask sizes
@@ -52,9 +51,16 @@
 									// then 20% of mini flask liquid = (20/num_flasks)% of main flask
 									// liquid. If main_flask_scale = 0.5, then 20% of 
 									// mini flask liquid = (40/num_flasks)% of main flask liquid
+//TEMPERATURE PERTURBATION PARAMETERS
+#define t_perturbation = True						//Is there temperature perturbation? True or False values only
+#define t_perturb_type = "smooth"					//Allowed values =  ["smooth", "step"]
+#define inflow_T_end   = 1000						//If "smooth" chosen choose temperature inflow value at end of run
+#define max_step_size  = 20						//If "step" chosen, choose the max temperature change during perturb
+#define step_freq      = 200						//If "step" chosen, choose how often perturbation occurs (timesteps)
+
 
    //TIME PARAMETERS
-#define max_timesteps             1*pow(10,4)  // max number of generations per experiment
+#define max_timesteps             1*pow(10,3)  // max number of generations per experiment
 #define init_period               500          // initialisation period (timesteps)
 
    // DATA FILE NAMES
@@ -344,12 +350,16 @@ int initialise_flasks (large_flask &main_flask, vector <flask> &flask_list) {
 }
 
 //*************** update all flask environments **********************************//
-int update_all_flasks (large_flask &main_flask, vector < flask > &flask_list, double &inflow_T, double T_switch) {
+int update_all_flasks (large_flask &main_flask, vector < flask > &flask_list, double &inflow_T, double T_switch, int number_gens) {
    // outflow and inflow to large flasks
    for (int j = 0; j < num_nutrients; j++){ main_flask.environment[j]  = main_flask.environment[j]*(1.0-abiotic_influx);}     
    for (int j = 0; j < num_nutrients; j++){ main_flask.environment[j] += nutrient_inflow;            		        } 
 
-   if (T_switch == 1.0) { inflow_T -= (inflow_T_start - inflow_T_end)/(max_timesteps*1.0); }       // update the T of inflow medium
+   if (T_switch == 1.0 && t_perturbation ) { // update the T of inflow medium if perturbations are switched on
+	if (t_perturb_type == "smooth")    { inflow_T -= (inflow_T_start - inflow_T_end)/(max_timesteps*1.0);} 
+	else if (t_perturb_type == "step" && fmod(number_gens,max_step_size) == 0 ) { inflow_T += max_step_size*(1.0-2.0*drand48()); }
+	else if (t_perturb_type != "step" && t_perturb_type != "smooth") { cout << "Invalid temperature perturbation option! \n";    }
+   }       
 	    
    main_flask.temperature = main_flask.temperature*(1.0-abiotic_influx) + inflow_T*abiotic_influx; // dilute main flask with fresh inflow
 
@@ -612,7 +622,7 @@ int main(int argc, char **argv) {
 	                          NUTRIENT FLOW
 	**************************************************************************************/
 
-	update_all_flasks(main_flask, flask_list, inflow_T, 1.0);
+	update_all_flasks(main_flask, flask_list, inflow_T, 1.0, number_gens);
 
 	/********************************************************************************
 				LOOP OVER MINI FLASKS
@@ -672,7 +682,7 @@ int main(int argc, char **argv) {
 
 	//if (num_alive_flasks == 0) { break; } // end code when all flasks are dead
         number_gens++;
-        
+
     }
     
     /* CLOSE FILES */
