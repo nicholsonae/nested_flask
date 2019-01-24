@@ -357,8 +357,8 @@ int update_all_flasks (large_flask &main_flask, vector < flask > &flask_list, do
 
    if (T_switch == 1.0 && t_perturbation ) { // update the T of inflow medium if perturbations are switched on
 	if (t_perturb_type == "smooth")    { inflow_T -= (inflow_T_start - inflow_T_end)/(max_timesteps*1.0);} 
-	else if (t_perturb_type == "step" && fmod(number_gens,max_step_size) == 0 ) { inflow_T += max_step_size*(1.0-2.0*drand48()); }
-	else if (t_perturb_type != "step" && t_perturb_type != "smooth") { cout << "Invalid temperature perturbation option! \n";    }
+	else if (t_perturb_type == "step" && fmod(number_gens, step_freq) == 0 ) { inflow_T += max_step_size*(1.0-2.0*drand48()); }
+	else if (t_perturb_type != "step" && t_perturb_type != "smooth") { cout << "Invalid temperature perturbation option! \n"; }
    }       
 	    
    main_flask.temperature = main_flask.temperature*(1.0-abiotic_influx) + inflow_T*abiotic_influx; // dilute main flask with fresh inflow
