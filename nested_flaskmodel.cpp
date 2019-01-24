@@ -51,8 +51,8 @@
 									// then 20% of mini flask liquid = (20/num_flasks)% of main flask
 									// liquid. If main_flask_scale = 0.5, then 20% of 
 									// mini flask liquid = (40/num_flasks)% of main flask liquid
-//TEMPERATURE PERTURBATION PARAMETERS
-#define t_perturbation = True						//Is there temperature perturbation? True or False values only
+   //TEMPERATURE PERTURBATION PARAMETERS
+#define t_perturbation = true						//Is there temperature perturbation? true or false values only
 #define t_perturb_type = "smooth"					//Allowed values =  ["smooth", "step"]
 #define inflow_T_end   = 1000						//If "smooth" chosen choose temperature inflow value at end of run
 #define max_step_size  = 20						//If "step" chosen, choose the max temperature change during perturb
