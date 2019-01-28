@@ -84,9 +84,11 @@
 #define init_period               500          // initialisation period (timesteps)
 
    // DATA FILE NAMES
+#define genome_filename(file_num)	   "genome_data_"+to_string(file_num)+".txt"
 #define macro_filename(file_num)           "main_flask_macro_data_"+to_string(file_num)+".txt"
 #define nutrient_filename(file_num)        "main_flask_nutrient_data_"+to_string(file_num)+".txt"
 #define mini_filename(flask_num, filenum)  "mini_flask_"+to_string(flask_num)+"_run_"+to_string(file_num)+".txt"
+#define micro_filename(flask_num, filenum) "mini_flask_pop_"+to_string(flask_num)+"_run_"+to_string(file_num)+".txt"
 
 
 using namespace std;
@@ -737,10 +739,22 @@ int main(int argc, char **argv) {
    // FILE SET UP
    ofstream macro_data (macro_filename(file_num));
    ofstream nutrient_data (nutrient_filename(file_num));
+   ofstream genome_data (genome_filename(file_num));
    vector < ofstream > mini_flask_data;
+   vector < ofstream > mini_flask_pop;
    for (int f = 0; f < num_flasks; f++){
 	mini_flask_data.emplace_back(ofstream{ mini_filename(f, filenum) });
-   }    
+	mini_flask_pop.emplace_back(ofstream{ micro_filename(f, filenum) });
+   }
+
+   for (int n = 0; n < n_g_interacts.size(); n++) {
+	genome_data << n << " " << a_g_interacts[n];
+	for (int m = 0; m < n_g_interacts[n].size(); m++) {
+	   genome_data << " " << n_g_interacts[n][m];
+	}
+	genome_data << endl;
+   }
+   genome_data.close();   
 
    /****************************************************************************************
 					INITIALISE ENVIRONMENT 
@@ -779,12 +793,17 @@ int main(int argc, char **argv) {
 	//record data from the mini flasks to individual files
 	for (int f = 0; f < num_flasks; f++) {
 	   int local_pop = 0;
-	   for (int s = 0; s < flask_list[f].species.size(); s++) { local_pop += flask_list[f].species[s].population; }
+	   mini_flask_pop[f] << number_gens;
+	   for (int s = 0; s < flask_list[f].species.size(); s++) { 
+		mini_flask_pop[f] << " " << flask_list[f].species[s].genome << " " << flask_list[f].species[s].population;
+		local_pop += flask_list[f].species[s].population; 
+	   }
 	   mini_flask_data[f] << number_gens << " " << flask_list[f].species.size() << " " << local_pop << " " << flask_list[f].temperature; 
 	   for (int n = 0; n < num_nutrients; n++) {
 		mini_flask_data[f] << " " << flask_list[f].environment[n];
 	   }
 	   mini_flask_data[f] << endl;
+	   mini_flask_pop[f]  << endl;
 	}
 
 	/************************************************************************************
@@ -874,6 +893,7 @@ int main(int argc, char **argv) {
     nutrient_data.close();
     for (int f = 0; f < num_flasks; f++) {
 	mini_flask_data[f].close();
+	mini_flask_pop[f].close();
     }
 
     return 0;
