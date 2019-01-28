@@ -625,7 +625,7 @@ int main(int argc, char **argv) {
    *****************************************************************************************/
 
     while (init_counter < init_period) {
-	update_all_flasks(main_flask, flask_list, inflow_T, 0.0);
+	update_all_flasks(main_flask, flask_list, inflow_T, 0.0, 0);
 	init_counter++;
     }
 
