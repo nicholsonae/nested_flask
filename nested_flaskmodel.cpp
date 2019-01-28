@@ -58,6 +58,11 @@
 #define max_step_size  = 20						//If "step" chosen, choose the max temperature change during perturb
 #define step_freq      = 200						//If "step" chosen, choose how often perturbation occurs (timesteps)
 
+   //CULLING PARAMETERS
+#define cull 	        	  true					//Do we cull? true or false values only
+#define cull_percent    	  0.5					//How much do we cull each flask by? values from range [0,1]
+#define cull_freq       	  100					//How frequently do we cull? (timesteps)
+#define cull_number     	  1					//Number of flasks to cull. Ints from range [0,num_flasks]
 
    //TIME PARAMETERS
 #define max_timesteps             1*pow(10,3)  // max number of generations per experiment
@@ -529,6 +534,46 @@ int reproduction_event(vector<microbe> &species, default_random_engine &generato
    return 0;
 }
 
+/************************ cull event *********************************/
+int cull_event(vector <flask> &flask_list, default_random_engine &generator) {
+
+	vector < int > cull_list;
+	int c; 	      // records the flask randomly selected for culling
+	int cull_pop; // records how many individuals get culled in a particular flask
+	int f; 	      // flask marker
+	
+	if      ( cull_number <= 0 || cull_number > num_flasks ) { cout << "Invalid cull set up \n"; return 0; }
+	else if ( cull_number == num_flasks ) { for (int f = 0; f < num_flasks; f++) { cull_list.push_back(f); } }
+	else    {
+	   while (cull_list.size() < cull_number) {  // generate list of flasks to cull
+		c = floor( drand48()*num_flasks );
+		if ( find(cull_list.begin(), cull_list.end(), c) == cull_list.end() ) { cull_list.push_back(c); }
+	   }
+	}
+
+	for (int v = 0; v < cull_list.size(); v++) {  // cull the selected flasks
+	   f = cull_list[v];
+	   cull_pop = 0;
+	   for (int s = 0; s < flask_list[f].species.size(); s++) { cull_pop += flask_list[f].species[s].population; }
+	   cull_pop = floor(cull_pop*cull_percent);  // calculate population to cull
+	   
+	   for (int p = 0; p < cull_pop; p++) {      // kill individuals until cull requirement satisfied
+  		int cull_i = chooseAgent(flask_list[f].species);  // choses a microbe at random to cull
+   		if (cull_i > -1) {
+		    microbe chosen_microbe = generate_individual(cull_i, flask_list[f].species, generator);  // generate the chosen microbe
+	   	    flask_list[f].species[cull_i].population--;
+	   	    flask_list[f].species[cull_i].biomass -= chosen_microbe.biomass; 		          // remove biomass of dead microbe 
+	   	    flask_list[f].species[cull_i].nutrient -= chosen_microbe.nutrient; 		  // remove unconverted nutrients 
+	   	    if (flask_list[f].species[cull_i].nutrient < 0) { flask_list[f].species[cull_i].nutrient = 0;   }
+	   	    if (flask_list[f].species[cull_i].biomass < 1)  { flask_list[f].species[cull_i].biomass = 0;
+								      flask_list[f].species[cull_i].population = 0; }
+	   	    if (flask_list[f].species[cull_i].population == 0) { flask_list[f].species.erase(flask_list[f].species.begin() + cull_i); } //remove extinct species from list
+		}
+	   }
+	}
+
+	return 0;
+
 }
 
 
@@ -625,6 +670,13 @@ int main(int argc, char **argv) {
 	**************************************************************************************/
 
 	update_all_flasks(main_flask, flask_list, inflow_T, 1.0, number_gens);
+
+
+	/*****************************************************************************************
+				CULL EVENT
+	*****************************************************************************************/
+
+	if (cull && fmod(number_gens,cull_freq) == 0) { cull_event(flask_list, generator); }
 
 	/********************************************************************************
 				LOOP OVER MINI FLASKS
