@@ -167,7 +167,7 @@ microbe generate_individual(int i, vector<microbe> &species, default_random_engi
    if (i_waste < 0)                      { i_waste = 0;                      }
 
    microbe chosen_microbe;
-   chosen_microbe.genome =     i;
+   chosen_microbe.genome =     species[i].genome;
    chosen_microbe.population = 1;
    chosen_microbe.nutrient =   1.0*i_nutrient;
    chosen_microbe.biomass =    1.0*i_biomass;
