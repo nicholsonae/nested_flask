@@ -11,6 +11,9 @@
 #include <string>
 #include <sstream>
 
+
+// still to do: step T perturbations, cull % of a flask every x timesteps
+
 /*******************************************
         CONSTANT PARAMETERS
 *******************************************/
@@ -51,16 +54,28 @@
 									// then 20% of mini flask liquid = (20/num_flasks)% of main flask
 									// liquid. If main_flask_scale = 0.5, then 20% of 
 									// mini flask liquid = (40/num_flasks)% of main flask liquid
+   //RESEEDING PARAMETERS
+#define reseeding		  true
+#define reseed_type		  "ring"				//allowed values =["random","ring"]
+									//types of reseeding are "random" i.e. randomly reseed empty flask
+									//with randomly generated community, or "ring" i.e. each flask has 
+									//two nearest neighbours in a ring structure and reseeding occurs from
+									//a sub community of one of the neighbouring flasks (50/50)
+#define reseed_population	  100					//if "random" chosen define the size of the randomly generated
+									//microbe community to reseed with
+#define reseed_percent            0.5					//if "ring" chosen define the percentage of neighbour community
+									//to be moved in reseeding empty flask
+
    //TEMPERATURE PERTURBATION PARAMETERS
-#define t_perturbation = true						//Is there temperature perturbation? true or false values only
-#define t_perturb_type = "smooth"					//Allowed values =  ["smooth", "step"]
-#define inflow_T_end   = 1000						//If "smooth" chosen choose temperature inflow value at end of run
-#define max_step_size  = 20						//If "step" chosen, choose the max temperature change during perturb
-#define step_freq      = 200						//If "step" chosen, choose how often perturbation occurs (timesteps)
+#define t_perturbation  	  false					//Is there temperature perturbation? true or false values only
+#define t_perturb_type  	  "step"				//Allowed values =  ["smooth", "step"]
+#define inflow_T_end    	  1000					//If "smooth" chosen choose temperature inflow value at end of run
+#define max_step_size   	  20					//If "step" chosen, choose the max temperature change during perturb
+#define step_freq       	  200					//If "step" chosen, choose how often perturbation occurs (timesteps)
 
    //CULLING PARAMETERS
 #define cull 	        	  true					//Do we cull? true or false values only
-#define cull_percent    	  0.5					//How much do we cull each flask by? values from range [0,1]
+#define cull_percent    	  1.0					//How much do we cull each flask by? values from range [0,1]
 #define cull_freq       	  100					//How frequently do we cull? (timesteps)
 #define cull_number     	  1					//Number of flasks to cull. Ints from range [0,num_flasks]
 
@@ -211,8 +226,9 @@ vector < vector <int> > nutrient_genome_interactions(default_random_engine &gene
 	   else if (temp[j] < 0) { neg += 1;    }  // if negative - species excretes this nutrient
 	   else                  { temp[j] = 0; }  // if 0 - species does not interact with this nutrient
 	}
+	//cout << "pos: " << pos << " neg: " << neg << "\n";
 
-	if ( pos > 2 && neg > 2) { cout << "metabolism setup problem"; }  // bug check
+	if ( pos > 2 && neg > 2)    { cout << "metabolism setup problem"; }  // bug check
 
 	if (pos == 1) {   // we eat one nutrient
 	   for ( int k = 0; k < temp.size(); k++ ) { if (temp[k] > 0) { temp[k] = 1; } }
@@ -296,7 +312,7 @@ vector < vector <int> > nutrient_genome_interactions(default_random_engine &gene
 		if ( temp[m]  < 0 ) {  cons_ex_vector[m] = 0;           cons_ex_vector[m+num_nutrients] = -1*temp[m]; }
 		if ( temp[m] == 0 ) {  cons_ex_vector[m] = 0;           cons_ex_vector[m+num_nutrients] = 0;          }
 	   }
-	} else { // metabolism not viable - must both consume and excrete!
+	} else {//if (pos == 4 || neg == 4 || pos == 0 || neg == 0) { // metabolism not viable - must both consume and excrete!
 	   for (int m = 0; m < 2*num_nutrients; m++) { cons_ex_vector[m] = 0; }
 	}
 	all_metabolisms.push_back(cons_ex_vector);        
@@ -475,11 +491,13 @@ int biomassCreation_event (vector<microbe> &species, double &temperature, vector
 int waste_event (vector<microbe> &species, vector<double> &environment, vector<vector<int>> metabolism, default_random_engine &generator){
 
    int i = chooseAgent(species);
+
    if (i > -1){
 	microbe chosen_microbe = generate_individual(i, species, generator); // generate the chosen microbe
 	int waste_count = 0;
 	for (int k = 0; k < num_nutrients; k++) { waste_count += metabolism[species[i].genome][k+num_nutrients]; }
 	while (chosen_microbe.waste >= waste_count && chosen_microbe.waste > 0) {
+
 	   for (int k = 0; k < num_nutrients; k++) {
 		species[i].waste -=  metabolism[species[i].genome][k+num_nutrients];
 		environment[k] +=  metabolism[species[i].genome][k+num_nutrients];
@@ -533,6 +551,110 @@ int reproduction_event(vector<microbe> &species, default_random_engine &generato
    }
    return 0;
 }
+
+/************************ reseed event *********************************/
+int reseed_flasks(vector <flask> &flask_list, int empty_flask, default_random_engine &generator) {
+
+	if (reseed_type != "random" && reseed_type != "ring") { cout << "Invalid reseeding option! \n"; return 0; }
+
+	// is the temperature habitable? If yes, reseed, if no, no reseeding takes place
+	flask current = flask_list[empty_flask];
+
+	double factor_i = tau*sqrt(pow(current.temperature - prefered_abiotic, 2.0)); // calucate if microbes could eat in current env
+	double satisfaction = exp (-1.0*pow(factor_i,2.0));
+	int total_count_eat = floor(max_consumption * satisfaction);
+	if (total_count_eat < 1) { return 0; } // environment is too inhospitable for microbes to consume so reseeding not possible
+
+	if (reseed_type == "random"){
+		microbe new_microbe;
+		vector < microbe > species_reseed;
+		for (int j = 0; j < reseed_population; j++) {             // currently set up with diverse population
+		   int genome_new = floor(drand48()*pow(2,genome_length)); // randomly generate microbes
+		   int already_exists = 0;
+		   for (int k = 0; k < species_reseed.size(); k++){
+
+			if (genome_new == species_reseed[k].genome) {
+			   species_reseed[k].population++;
+			   species_reseed[k].biomass += initial_biomass;
+			   already_exists = 1;
+			}
+		   }
+		   if (already_exists == 0) {
+			new_microbe.population = 1;
+			new_microbe.genome = genome_new;
+			new_microbe.nutrient = 0;
+			new_microbe.biomass = initial_biomass;
+			new_microbe.waste = 0;
+			species_reseed.push_back(new_microbe);
+		   }
+		}
+		flask_list[empty_flask].species = species_reseed;
+
+	} 
+	else if (reseed_type == "ring") {
+		microbe new_microbe;
+		vector < microbe > species_reseed;
+		int g;
+		int n; // neighbour that will recolonise empty flask
+		int l_neighbour = empty_flask - 1; if (l_neighbour < 0) 	  { l_neighbour += num_flasks;}
+		int r_neighbour = empty_flask + 1; if (r_neighbour >= num_flasks) { r_neighbour -= num_flasks;}
+		int l_size = flask_list[l_neighbour].species.size();
+		int r_size = flask_list[r_neighbour].species.size();
+		if      (l_size == 0 && r_size == 0 ) { return 0; }        // both neighbours are empty so no reseeding possible
+		else if (l_size >  0 && r_size == 0 ) { n = l_neighbour; } // right neighbour empty but left neighbour can colonise
+		else if (l_size == 0 && r_size >  0 ) { n = r_neighbour; } // left neighbour empty but right neighbour can colonise
+		else if (drand48() < 0.5)             { n = l_neighbour; } // only other option is that both neighbours can colonise
+		else 		                      { n = r_neighbour; } // so 50/50 as to which is successful
+
+		   int reseed_pop = 0;
+		   for (int s = 0; s < flask_list[n].species.size(); s++) { reseed_pop += flask_list[n].species[s].population; }
+		   reseed_pop = floor(reseed_percent*reseed_pop); // reseed with reseed_percent of neighbour species
+		   for (int k = 0; k < reseed_pop; k++) {
+			g = chooseAgent(flask_list[n].species);  // choose an individual to move between flasks
+
+			microbe chosen_microbe = generate_individual(g, flask_list[n].species, generator);
+	   		int already_exists = 0;
+	  		for (int k = 0; k < species_reseed.size(); k++){
+
+			   if (chosen_microbe.genome == species_reseed[k].genome) {
+		   		species_reseed[k].population++;
+		   		species_reseed[k].biomass  += chosen_microbe.biomass;
+				species_reseed[k].nutrient += chosen_microbe.nutrient;
+				species_reseed[k].waste    += chosen_microbe.waste;
+		   		already_exists = 1;
+			   }
+	   		}
+	   		if (already_exists == 0) {
+			   new_microbe.population = 1;
+	   		   new_microbe.genome = chosen_microbe.genome;
+			   new_microbe.nutrient = chosen_microbe.nutrient;
+			   new_microbe.biomass  = chosen_microbe.biomass;
+			   new_microbe.waste    = chosen_microbe.waste;
+			   species_reseed.push_back(new_microbe);
+	   		}
+
+			for (int d = 0; d < flask_list[n].species.size(); d++) { //removes selected indiviual from neighbour flask
+
+			   if (chosen_microbe.genome == flask_list[n].species[d].genome) {
+
+		   		flask_list[n].species[d].population--;
+	   			flask_list[n].species[d].biomass  -= chosen_microbe.biomass;
+	   			flask_list[n].species[d].nutrient -= chosen_microbe.nutrient;
+	   			if (flask_list[n].species[d].nutrient < 0) { flask_list[n].species[d].nutrient = 0; }
+	   			if (flask_list[n].species[d].biomass  < 1) { flask_list[n].species[d].biomass = 0;
+									     flask_list[n].species[d].population = 0; }
+	   			if (flask_list[n].species[d].population == 0) { flask_list[n].species.erase(flask_list[n].species.begin() + d);}
+				break;  // have removed individual so can exit loop
+			   }
+			}
+		   }
+		   flask_list[empty_flask].species = species_reseed;
+
+	}
+	return 0;
+}
+
+
 
 /************************ cull event *********************************/
 int cull_event(vector <flask> &flask_list, default_random_engine &generator) {
@@ -671,12 +793,20 @@ int main(int argc, char **argv) {
 
 	update_all_flasks(main_flask, flask_list, inflow_T, 1.0, number_gens);
 
+	/*****************************************************************************************
+				RESEEDING EVENT
+	*****************************************************************************************/
+        
+	for (int f = 0; f < num_flasks; f++) {
+		if (flask_list[f].species.size() <= 0) { reseed_flasks(flask_list, f, generator); }
+	}
 
 	/*****************************************************************************************
 				CULL EVENT
 	*****************************************************************************************/
 
-	if (cull && fmod(number_gens,cull_freq) == 0) { cull_event(flask_list, generator); }
+	if (cull && fmod(number_gens,cull_freq) == 0 && number_gens > 0 ) { cull_event(flask_list, generator); }
+
 
 	/********************************************************************************
 				LOOP OVER MINI FLASKS
