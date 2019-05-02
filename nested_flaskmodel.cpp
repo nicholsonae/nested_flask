@@ -816,8 +816,10 @@ int main(int argc, char **argv) {
 				RESEEDING EVENT
 	*****************************************************************************************/
         
-	for (int f = 0; f < num_flasks; f++) {
+	if (reseeding) {
+	   for (int f = 0; f < num_flasks; f++) {
 		if (flask_list[f].species.size() <= 0) { reseed_flasks(flask_list, f, generator); }
+	   }
 	}
 
 	/*****************************************************************************************
