@@ -33,12 +33,12 @@
 #define tau           		  0.02   // temperature sensitivity of microbes (universal)
     
    // FLASK PARAMETERS
-#define num_flasks                4      // the number of mini flasks contained within the large flask
+#define num_flasks                8      // the number of mini flasks contained within the large flask
 #define num_nutrients             4      // number of different nutrient types within experiment
 
    //FLOW PARAMETERS
 #define nutrient_inflow	          1200.0 // number of units of each nutrient type inflowing per timestep to large flask
-#define inflow_T_start            100.0  // temperature of inflow medium at start of experiment
+#define inflow_T_start            220.0  // temperature of inflow medium at start of experiment
 #define abiotic_influx            0.2    // the percentage of the main flask liquid (by volume) exchanged for fresh inflow each timestep
 #define mini_flask_exchange       0.2    // the percentage of the mini flask liquid (by volume) swapped for main flask liquid each timestep
 #define main_flask_scale          1.0    // defines how large the main flask is in relation to the mini flask sizes
@@ -55,7 +55,7 @@
 									// liquid. If main_flask_scale = 0.5, then 20% of 
 									// mini flask liquid = (40/num_flasks)% of main flask liquid
    //RESEEDING PARAMETERS
-#define reseeding		  true
+#define reseeding		  false
 #define reseed_type		  "ring"				//allowed values =["random","ring"]
 									//types of reseeding are "random" i.e. randomly reseed empty flask
 									//with randomly generated community, or "ring" i.e. each flask has 
@@ -74,13 +74,13 @@
 #define step_freq       	  200					//If "step" chosen, choose how often perturbation occurs (timesteps)
 
    //CULLING PARAMETERS
-#define cull 	        	  true					//Do we cull? true or false values only
+#define cull 	        	  false					//Do we cull? true or false values only
 #define cull_percent    	  1.0					//How much do we cull each flask by? values from range [0,1]
 #define cull_freq       	  100					//How frequently do we cull? (timesteps)
 #define cull_number     	  1					//Number of flasks to cull. Ints from range [0,num_flasks]
 
    //TIME PARAMETERS
-#define max_timesteps             1*pow(10,3)  // max number of generations per experiment
+#define max_timesteps             1*pow(10,4)  // max number of generations per experiment
 #define init_period               500          // initialisation period (timesteps)
 
    // DATA FILE NAMES
