@@ -72,6 +72,7 @@
 #define inflow_T_end    	  1000					//If "smooth" chosen choose temperature inflow value at end of run
 #define max_step_size   	  20					//If "step" chosen, choose the max temperature change during perturb
 #define step_freq       	  200					//If "step" chosen, choose how often perturbation occurs (timesteps)
+#define heat_bath		  false					//Heatbath = true means microbes can no longer impact T_global
 
    //CULLING PARAMETERS
 #define cull 	        	  false					//Do we cull? true or false values only
@@ -403,6 +404,7 @@ int update_all_flasks (large_flask &main_flask, vector < flask > &flask_list, do
 	}
    } 
    main_flask.temperature = temperature_changes/num_flasks;
+   if (heat_bath) { main_flask.temperature = inflow_T; }
 
    return 0;
 
